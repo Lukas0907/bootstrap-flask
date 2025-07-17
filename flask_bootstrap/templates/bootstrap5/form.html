@@ -16,7 +16,7 @@
 {% macro _hz_form_wrap(horizontal_columns, form_type, add_group=False, required=False) %}
     {% if form_type == "horizontal" %}
         {% if add_group %}
-            <div class="{{ form_group_classes }} row{% if required %} required{% endif %}">{% endif %}
+            <div class="row{% if required %} required{% endif %}">{% endif %}
         <div class="offset-{{ horizontal_columns[0] }}-{{ horizontal_columns[1] }}
               col-{{ horizontal_columns[0] }}-{{ horizontal_columns[2] }}
              ">
@@ -36,10 +36,9 @@
                     button_style='',
                     button_size='',
                     form_group_classes='') %}
-
     {# this is a workaround hack for the more straightforward-code of just passing required=required parameter. older versions of wtforms do not have
 the necessary fix for required=False attributes, but will also not set the required flag in the first place. we skirt the issue using the code below #}
-    {% if field.flags.required and not required in kwargs %}
+    {% if field.flags.required and "required" not in kwargs %}
         {% set kwargs = dict(required=True, **kwargs) %}
     {% endif %}
 
@@ -47,23 +46,26 @@ the necessary fix for required=False attributes, but will also not set the requi
 
     {# support for label_class, radio_class and description_class which are popped, to prevent they are added to input, but restored at the end of this macro for the next rendering #}
     {%- set label_class = '' -%}
-    {%- if field.render_kw.label_class -%}
+    {%- set label_classes = '' -%}
+    {%- if field.render_kw.label_class is defined -%}
         {% set label_class = field.render_kw.pop('label_class', '') -%}
         {% set label_classes = ' ' + label_class -%}
     {%- endif -%}
     {%- set radio_class = '' -%}
-    {%- if field.render_kw.radio_class -%}
+    {%- set radio_classes = '' -%}
+    {%- if field.render_kw.radio_class is defined -%}
         {% set radio_class = field.render_kw.pop('radio_class', '') -%}
         {% set radio_classes = ' ' + radio_class -%}
     {%- endif -%}
     {%- set description_class = '' -%}
-    {%- if field.render_kw.description_class -%}
+    {%- set description_classes = '' -%}
+    {%- if field.render_kw.description_class is defined -%}
         {% set description_class = field.render_kw.pop('description_class', '') -%}
         {% set description_classes = ' ' + description_class -%}
     {%- endif -%}
 
     {# combine render_kw class or class/class_ argument with Bootstrap classes #}
-    {% set render_kw_class = ' ' + field.render_kw.class if field.render_kw.class else '' %}
+    {% set render_kw_class = ' ' + field.render_kw.class if field.render_kw.class is defined else '' %}
     {% set class = kwargs.pop('class', '') or kwargs.pop('class_', '') %}
     {% if class %}
         {# override render_kw class when class/class_ presents as keyword argument #}
@@ -73,9 +75,9 @@ the necessary fix for required=False attributes, but will also not set the requi
     {% endif %}
     {% set extra_classes = render_kw_class + class %}
 
-    {% if field.widget.input_type == 'checkbox' %}
+    {% if field.widget.input_type is defined and field.widget.input_type == 'checkbox' %}
         {% set field_kwargs = kwargs %}
-        {% call _hz_form_wrap(horizontal_columns, form_type, True, required=required) %}
+        {% call _hz_form_wrap(horizontal_columns, form_type, True, required=kwargs.get("required")) %}
         {% if field.type == 'SwitchField' %}
             {% do field_kwargs.update({'role': 'switch'}) %}
         {% endif %}
@@ -91,7 +93,7 @@ the necessary fix for required=False attributes, but will also not set the requi
                         <div class="invalid-feedback d-block">{{ error }}</div>
                     {%- endfor %}
                 {%- elif field.description -%}
-                    {% call _hz_form_wrap(horizontal_columns, form_type, required=required) %}
+                    {% call _hz_form_wrap(horizontal_columns, form_type, required=kwargs.get("required")) %}
                         <small class="form-text text-body-secondary{{ description_classes|safe }}">{{ field.description|safe }}</small>
                     {% endcall %}
                 {%- endif %}
@@ -100,7 +102,7 @@ the necessary fix for required=False attributes, but will also not set the requi
     {%- elif field.type == 'RadioField' -%}
         {# note: A cleaner solution would be rendering depending on the widget,
      this is just a hack for now, until I can think of something better #}
-        <div class="{{ form_group_classes }} {% if form_type == 'horizontal' %}row{% endif %}{% if required %} required{% endif %}">
+        <div class="{{ form_group_classes }} {% if form_type == 'horizontal' %}row{% endif %}{% if kwargs.get("required") %} required{% endif %}">
             {%- if form_type == "inline" %}
                 {{ field.label(class="visually-hidden%s" % label_classes)|safe }}
             {% elif form_type == "horizontal" %}
@@ -113,7 +115,7 @@ the necessary fix for required=False attributes, but will also not set the requi
             {% if form_type == 'horizontal' %}
               <div class="col-{{ horizontal_columns[0] }}-{{ horizontal_columns[2] }}">
               {% endif %}
-            {#% call _hz_form_wrap(horizontal_columns, form_type, True, required=required) %#}
+            {#% call _hz_form_wrap(horizontal_columns, form_type, True, required=kwargs.get("required")) %#}
             {% for item in field -%}
                 <div class="form-check{% if form_type == "inline" %} form-check-inline{% endif %}">
                     {{ item(class="form-check-input")|safe }}
@@ -136,7 +138,7 @@ the necessary fix for required=False attributes, but will also not set the requi
         {# deal with jinja scoping issues? #}
         {% set field_kwargs = kwargs %}
         {# note: same issue as above - should check widget, not field type #}
-        {% call _hz_form_wrap(horizontal_columns, form_type, True, required=required) %}
+        {% call _hz_form_wrap(horizontal_columns, form_type, True, required=kwargs.get("required")) %}
             {% set default_button_style = button_style or config.BOOTSTRAP_BTN_STYLE %}
             {% set default_button_size = button_size or config.BOOTSTRAP_BTN_SIZE %}
             {{ field(class='btn btn-%s btn-%s%s' % (button_map.get(field.name, default_button_style), default_button_size, extra_classes), **field_kwargs) }}
@@ -210,12 +212,12 @@ the necessary fix for required=False attributes, but will also not set the requi
                 </div>
                 {%- if field.errors %}
                     {%- for error in field.errors %}
-                        {% call _hz_form_wrap(horizontal_columns, form_type, required=required) %}
+                        {% call _hz_form_wrap(horizontal_columns, form_type, required=kwargs.get("required")) %}
                             <div class="invalid-feedback d-block">{{ error }}</div>
                         {% endcall %}
                     {%- endfor %}
                 {%- elif field.description -%}
-                    {% call _hz_form_wrap(horizontal_columns, form_type, required=required) %}
+                    {% call _hz_form_wrap(horizontal_columns, form_type, required=kwargs.get("required")) %}
                         <small class="form-text text-body-secondary{{ description_classes|safe }}">{{ field.description|safe }}</small>
                     {% endcall %}
                 {%- endif %}
@@ -322,7 +324,7 @@ action="" is what we want, from http://www.ietf.org/rfc/rfc2396.txt:
             {%- if method %} method="{{ method }}"{% endif %}
             class="form
 {%- if extra_classes %} {{ extra_classes }}{% endif -%}{%- if form_type == "inline" %} {{ form_inline_classes }}{% endif -%}"
-            {%- if _enctype[0] %} enctype="{{ _enctype[0] }}"{% endif -%}
+            {%- if _enctype[0] is defined %} enctype="{{ _enctype[0] }}"{% endif -%}
             {%- if role %} role="{{ role }}"{% endif -%}
             {%- if novalidate %} novalidate{% endif -%}
             {%- if render_kw %} {{ render_kw|xmlattr }}{% endif -%}>

@@ -1,6 +1,7 @@
 import pytest
 from flask import Flask, render_template_string
 from flask_wtf import FlaskForm
+from jinja2 import StrictUndefined
 from wtforms import BooleanField, PasswordField, StringField, SubmitField, HiddenField, IntegerField, RadioField
 from wtforms.validators import DataRequired, Length
 
@@ -46,6 +47,7 @@ def app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.secret_key = 'for test'
+    app.jinja_env.undefined = StrictUndefined
 
     @app.route('/')
     def index():
